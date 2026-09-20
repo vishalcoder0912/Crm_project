@@ -1,0 +1,1075 @@
+// =============================================================================
+// Digital Order & Operations Management System — Complete Database Schema
+// All entities across all 8 phases defined upfront for relational integrity
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// PHASE 1 — FOUNDATION: Auth, RBAC, Customers, Products, SKUs
+// =============================================================================
+
+model User {
+  id             Int       @id @default(autoincrement())
+  businessId     String    @unique @default("")   // USR-0001
+  email          String    @unique
+  passwordHash   String
+  firstName      String
+  lastName       String
+  phone          String?
+  roleId         Int
+  branchId       Int?
+  isActive       Boolean   @default(true)
+  refreshToken   String?
+  lastLoginAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  role                   Role                    @relation(fields: [roleId], references: [id])
+  branch                 Branch?                 @relation(fields: [branchId], references: [id])
+  // Relations to other modules
+  assignedCustomers      Customer[]              @relation("AssignedEmployee")
+  createdEnquiries       Enquiry[]               @relation("EnquiryCreatedBy")
+  assignedEnquiries      Enquiry[]               @relation("EnquiryAssignedTo")
+  measurements           Measurement[]           @relation("MeasuredBy")
+  scheduledMeasurements  MeasurementSchedule[]   @relation("MeasurementAssignedTo")
+  createdQuotations      QuotationVersion[]      @relation("QuotationCreatedBy")
+  approvedQuotations     QuotationVersion[]      @relation("QuotationApprovedBy")
+  createdOrders          Order[]                 @relation("OrderCreatedBy")
+  stockRequestsCreated   StockRequest[]          @relation("StockRequestedBy")
+  stockRequestsApproved  StockRequest[]          @relation("StockApprovedBy")
+  posCreated             PurchaseOrder[]         @relation("POCreatedBy")
+  posApproved            PurchaseOrder[]         @relation("POApprovedBy")
+  grnsVerified           GoodsReceipt[]          @relation("GRNVerifiedBy")
+  tailoringAssigned      TailoringOrder[]        @relation("TailoringAssignedTo")
+  qcInspections          QCInspection[]          @relation("QCInspectedBy")
+  packingPrepared        PackingSlip[]           @relation("PackingPreparedBy")
+  paymentsRecorded       Payment[]               @relation("PaymentRecordedBy")
+  resizingsCreated       ResizingRequest[]       @relation("ResizingCreatedBy")
+  communications         Communication[]         @relation("CommunicationSender")
+  auditLogs              AuditLog[]
+  notifications          Notification[]
+  priceChanges           PriceHistory[]          @relation("PriceChangedBy")
+  assignedFollowUps      FollowUp[]              @relation("FollowUpAssignedTo")
+  createdFollowUps       FollowUp[]              @relation("FollowUpCreatedBy")
+
+  @@map("users")
+}
+
+model Role {
+  id          Int              @id @default(autoincrement())
+  name        String           @unique
+  displayName String
+  description String?
+  isSystem    Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  users       User[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          Int              @id @default(autoincrement())
+  code        String           @unique   // e.g., "customers.create"
+  module      String                      // e.g., "customers"
+  action      String                      // e.g., "create"
+  description String?
+  createdAt   DateTime         @default(now())
+
+  roles       RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           Int        @id @default(autoincrement())
+  roleId       Int
+  permissionId Int
+  createdAt    DateTime   @default(now())
+
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model Branch {
+  id         Int       @id @default(autoincrement())
+  businessId String    @unique @default("")   // BR-0001
+  name       String
+  code       String    @unique                 // GZB, MRT, DDN
+  city       String?
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  customers  Customer[]
+  users      User[]
+  followUps  FollowUp[]
+
+  @@map("branches")
+}
+
+model Customer {
+  id                Int       @id @default(autoincrement())
+  businessId        String    @unique @default("")   // CUS-0001
+  name              String
+  phone             String
+  email             String?
+  address           String?
+  notes             String?
+  assignedEmployeeId Int?
+  branchId          Int?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?
+
+  assignedEmployee  User?          @relation("AssignedEmployee", fields: [assignedEmployeeId], references: [id])
+  branch            Branch?        @relation(fields: [branchId], references: [id])
+  sites             Site[]
+  enquiries         Enquiry[]
+  measurements      Measurement[]
+  quotations        Quotation[]
+  orders            Order[]
+  payments          Payment[]
+  communications    Communication[]
+  installations     Installation[]
+  packingSlips      PackingSlip[]
+  followUps         FollowUp[]
+
+  @@index([phone])
+  @@index([name])
+  @@index([branchId])
+  @@map("customers")
+}
+
+model FollowUp {
+  id           Int       @id @default(autoincrement())
+  businessId   String    @unique @default("")   // FUP-0001
+  customerId   Int
+  enquiryId    Int?
+  orderId      Int?
+  branchId     Int?
+  purpose      String    // Quotation follow-up, Measurement confirmation, Price negotiation, Payment reminder...
+  channel      String?   // CALL, WHATSAPP, EMAIL, VISIT
+  dueAt        DateTime
+  priority     String    @default("MEDIUM")     // HIGH, MEDIUM, LOW
+  status       String    @default("PENDING")    // PENDING, COMPLETED, CANCELLED
+  assignedToId Int?
+  createdById  Int
+  notes        String?
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  customer     Customer  @relation(fields: [customerId], references: [id])
+  enquiry      Enquiry?  @relation(fields: [enquiryId], references: [id])
+  order        Order?    @relation(fields: [orderId], references: [id])
+  branch       Branch?   @relation(fields: [branchId], references: [id])
+  assignedTo   User?     @relation("FollowUpAssignedTo", fields: [assignedToId], references: [id])
+  createdBy    User      @relation("FollowUpCreatedBy", fields: [createdById], references: [id])
+
+  @@index([status, dueAt])
+  @@index([assignedToId])
+  @@index([customerId])
+  @@map("follow_ups")
+}
+
+model Site {
+  id         Int       @id @default(autoincrement())
+  customerId Int
+  name       String
+  address    String
+  landmark   String?
+  city       String?
+  pincode    String?
+  notes      String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  customer      Customer       @relation(fields: [customerId], references: [id])
+  enquiries     Enquiry[]
+  measurements  Measurement[]
+  quotations    Quotation[]
+  orders        Order[]
+  installations Installation[]
+
+  @@map("sites")
+}
+
+model Product {
+  id          Int       @id @default(autoincrement())
+  name        String
+  category    String    // Curtains, Blinds, Rods, Accessories, Services
+  productType String?   // Sub-type within category
+  description String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  skus        SKU[]
+
+  @@map("products")
+}
+
+model SKU {
+  id             Int       @id @default(autoincrement())
+  sku            String    @unique
+  productId      Int
+  vendorId       Int?
+  name           String
+  unit           String    @default("piece")  // piece, meter, sqft, set
+  costPrice      Decimal   @db.Decimal(12, 2)
+  sellingPrice   Decimal   @db.Decimal(12, 2)
+  serviceCharge  Decimal   @default(0) @db.Decimal(12, 2)
+  taxPercent     Decimal   @default(18) @db.Decimal(5, 2)
+  isActive       Boolean   @default(true)
+  effectiveDate  DateTime  @default(now())
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  product        Product        @relation(fields: [productId], references: [id])
+  vendor         Vendor?        @relation(fields: [vendorId], references: [id])
+  priceHistory   PriceHistory[]
+  stocks         Stock[]
+  quotationItems QuotationItem[]
+  orderItems     OrderItem[]
+  stockRequests  StockRequest[]
+  poItems        PurchaseOrderItem[]
+  grnItems       GoodsReceiptItem[]
+  tailoringOrders TailoringOrder[]
+
+  @@index([sku])
+  @@map("skus")
+}
+
+model PriceHistory {
+  id            Int       @id @default(autoincrement())
+  skuId         Int
+  oldCostPrice  Decimal   @db.Decimal(12, 2)
+  newCostPrice  Decimal   @db.Decimal(12, 2)
+  oldSellingPrice Decimal @db.Decimal(12, 2)
+  newSellingPrice Decimal @db.Decimal(12, 2)
+  oldServiceCharge Decimal @db.Decimal(12, 2)
+  newServiceCharge Decimal @db.Decimal(12, 2)
+  reason        String
+  changedById   Int
+  changedAt     DateTime  @default(now())
+
+  sku           SKU       @relation(fields: [skuId], references: [id])
+  changedBy     User      @relation("PriceChangedBy", fields: [changedById], references: [id])
+
+  @@map("price_history")
+}
+
+model Vendor {
+  id            Int       @id @default(autoincrement())
+  businessId    String    @unique @default("")   // VND-0001
+  name          String
+  contactPerson String?
+  phone         String?
+  email         String?
+  address       String?
+  gstNumber     String?
+  paymentTerms  String?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  skus           SKU[]
+  purchaseOrders PurchaseOrder[]
+  goodsReceipts  GoodsReceipt[]
+
+  @@map("vendors")
+}
+
+// =============================================================================
+// PHASE 2 — SALES: Enquiries, Measurements, Quotations
+// =============================================================================
+
+model Enquiry {
+  id                 Int       @id @default(autoincrement())
+  businessId         String    @unique @default("")   // ENQ-0001
+  customerId         Int
+  siteId             Int?
+  source             String?   // Walk-in, Referral, Online, Exhibition, etc.
+  enquiryDate        DateTime  @default(now())
+  assignedToId       Int?
+  advanceAmount      Decimal?  @db.Decimal(12, 2)
+  notes              String?
+  status             String    @default("NEW")
+  lostReason         String?
+  lostReasonDetail   String?
+  createdById        Int
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  deletedAt          DateTime?
+
+  customer           Customer            @relation(fields: [customerId], references: [id])
+  site               Site?               @relation(fields: [siteId], references: [id])
+  assignedTo         User?               @relation("EnquiryAssignedTo", fields: [assignedToId], references: [id])
+  createdBy          User                @relation("EnquiryCreatedBy", fields: [createdById], references: [id])
+  items              EnquiryItem[]
+  measurements       Measurement[]
+  measurementSchedules MeasurementSchedule[]
+  quotations         Quotation[]
+  followUps          FollowUp[]
+
+  @@index([status])
+  @@index([customerId])
+  @@map("enquiries")
+}
+
+model EnquiryItem {
+  id          Int       @id @default(autoincrement())
+  enquiryId   Int
+  room        String
+  requirement String    // Description of what customer needs
+  productType String?   // Curtain, Blind, Rod, etc.
+  quantity    Int?
+  notes       String?
+  createdAt   DateTime  @default(now())
+
+  enquiry     Enquiry   @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+
+  @@map("enquiry_items")
+}
+
+model Measurement {
+  id              Int       @id @default(autoincrement())
+  businessId      String    @unique @default("")   // MSR-0001
+  customerId      Int
+  enquiryId       Int?
+  siteId          Int?
+  measuredById    Int?
+  measurementDate DateTime  @default(now())
+  notes           String?
+  status          String    @default("PENDING")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  customer        Customer          @relation(fields: [customerId], references: [id])
+  enquiry         Enquiry?          @relation(fields: [enquiryId], references: [id])
+  site            Site?             @relation(fields: [siteId], references: [id])
+  measuredBy      User?             @relation("MeasuredBy", fields: [measuredById], references: [id])
+  items           MeasurementItem[]
+  quotationItems  QuotationItem[]
+  orderItems      OrderItem[]
+
+  @@map("measurements")
+}
+
+model MeasurementItem {
+  id              Int       @id @default(autoincrement())
+  measurementId   Int
+  room            String
+  windowArea      String    // Window A, Window B, Balcony Door, etc.
+  width           Decimal   @db.Decimal(10, 2)
+  height          Decimal   @db.Decimal(10, 2)
+  quantity        Int       @default(1)
+  unit            String    @default("inches")  // inches, feet, cm, meters
+  measurementType String?   // Rod-to-rod, frame, full-wall
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  measurement     Measurement      @relation(fields: [measurementId], references: [id], onDelete: Cascade)
+  quotationItems  QuotationItem[]
+  orderItems      OrderItem[]
+  resizingRequests ResizingRequest[]
+
+  @@map("measurement_items")
+}
+
+model MeasurementSchedule {
+  id              Int       @id @default(autoincrement())
+  enquiryId       Int
+  assignedToId    Int?
+  scheduledDate   DateTime
+  scheduledTime   String?
+  customerName    String
+  siteAddress     String
+  phone           String?
+  status          String    @default("SCHEDULED")  // SCHEDULED, CONFIRMED, IN_PROGRESS, COMPLETED, CANCELLED
+  notes           String?
+  completedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  enquiry         Enquiry   @relation(fields: [enquiryId], references: [id])
+  assignedTo      User?     @relation("MeasurementAssignedTo", fields: [assignedToId], references: [id])
+
+  @@map("measurement_schedules")
+}
+
+model Quotation {
+  id           Int                @id @default(autoincrement())
+  businessId   String             @unique @default("")   // QUO-0001
+  customerId   Int
+  enquiryId    Int?
+  siteId       Int?
+  status       String             @default("DRAFT")  // DRAFT, SENT, NEGOTIATION, ACCEPTED, REJECTED, EXPIRED
+acceptedVersionId Int?          @unique
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  deletedAt           DateTime?
+
+  customer         Customer           @relation(fields: [customerId], references: [id])
+  enquiry          Enquiry?           @relation(fields: [enquiryId], references: [id])
+  site             Site?              @relation(fields: [siteId], references: [id])
+  acceptedVersion  QuotationVersion?  @relation("AcceptedVersion", fields: [acceptedVersionId], references: [id])
+  versions         QuotationVersion[]
+  orders           Order[]
+
+  @@map("quotations")
+}
+
+model QuotationVersion {
+  id              Int       @id @default(autoincrement())
+  quotationId     Int
+  versionNumber   Int       @default(1)
+  versionLabel    String    @default("ORIGINAL")  // ORIGINAL, R1, R2, etc.
+  validityDate    DateTime?
+  subtotal        Decimal   @db.Decimal(14, 2)
+  discountAmount  Decimal   @default(0) @db.Decimal(12, 2)
+  taxAmount       Decimal   @default(0) @db.Decimal(12, 2)
+  totalAmount     Decimal   @db.Decimal(14, 2)
+  advanceAmount   Decimal   @default(0) @db.Decimal(12, 2)
+  balanceAmount   Decimal   @db.Decimal(14, 2)
+  notes           String?
+  changeReason    String?
+  status          String    @default("DRAFT")  // DRAFT, FINALIZED, SENT, ACCEPTED, SUPERSEDED
+  createdById     Int
+  approvedById    Int?
+  approvedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  quotation       Quotation       @relation(fields: [quotationId], references: [id])
+  createdBy       User            @relation("QuotationCreatedBy", fields: [createdById], references: [id])
+  approvedBy      User?           @relation("QuotationApprovedBy", fields: [approvedById], references: [id])
+  items           QuotationItem[]
+  acceptedFor     Quotation?      @relation("AcceptedVersion")
+
+  @@unique([quotationId, versionNumber])
+  @@map("quotation_versions")
+}
+
+model QuotationItem {
+  id                Int       @id @default(autoincrement())
+  quotationVersionId Int
+  measurementId     Int?
+  measurementItemId Int?
+  skuId             Int
+  room              String?
+  productName       String    // Snapshot — not dependent on current product name
+  quantity          Decimal   @db.Decimal(10, 2)
+  rate              Decimal   @db.Decimal(12, 2)   // Snapshot of price at quotation time
+  serviceCharge     Decimal   @default(0) @db.Decimal(12, 2)
+  discountPercent   Decimal   @default(0) @db.Decimal(5, 2)
+  discountAmount    Decimal   @default(0) @db.Decimal(12, 2)
+  taxPercent        Decimal   @default(18) @db.Decimal(5, 2)
+  taxAmount         Decimal   @default(0) @db.Decimal(12, 2)
+  amount            Decimal   @db.Decimal(14, 2)
+  notes             String?
+  createdAt         DateTime  @default(now())
+
+  quotationVersion  QuotationVersion @relation(fields: [quotationVersionId], references: [id], onDelete: Cascade)
+  measurement       Measurement?     @relation(fields: [measurementId], references: [id])
+  measurementItem   MeasurementItem? @relation(fields: [measurementItemId], references: [id])
+  sku               SKU              @relation(fields: [skuId], references: [id])
+
+  @@map("quotation_items")
+}
+
+// Need to add the relation for acceptedVersion
+// This is handled via the acceptedVersionId on Quotation
+// Prisma needs the @relation name on QuotationVersion side
+// Already handled above with acceptedFor
+
+// =============================================================================
+// PHASE 3 — ORDERS
+// =============================================================================
+
+model Order {
+  id               Int       @id @default(autoincrement())
+  businessId       String    @unique @default("")   // ORD-1001
+  customerId       Int
+  quotationId      Int?
+  siteId           Int?
+  orderDate        DateTime  @default(now())
+  subtotal         Decimal   @db.Decimal(14, 2)
+  discountAmount   Decimal   @default(0) @db.Decimal(12, 2)
+  taxAmount        Decimal   @default(0) @db.Decimal(12, 2)
+  totalAmount      Decimal   @db.Decimal(14, 2)
+  advanceAmount    Decimal   @default(0) @db.Decimal(12, 2)
+  balanceAmount    Decimal   @db.Decimal(14, 2)
+  status           String    @default("CONFIRMED")
+  paymentStatus    String    @default("PENDING")  // PENDING, PARTIAL, PAID
+  deliveryStatus   String    @default("PENDING")  // PENDING, PARTIAL, DELIVERED
+  createdById      Int
+  notes            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+
+  customer         Customer          @relation(fields: [customerId], references: [id])
+  quotation        Quotation?        @relation(fields: [quotationId], references: [id])
+  site             Site?             @relation(fields: [siteId], references: [id])
+  createdBy        User              @relation("OrderCreatedBy", fields: [createdById], references: [id])
+  items            OrderItem[]
+  statusHistory    OrderStatusHistory[]
+  stockRequests    StockRequest[]
+  purchaseOrders   PurchaseOrder[]
+  tailoringOrders  TailoringOrder[]
+  packingSlips     PackingSlip[]
+  installations    Installation[]
+  payments         Payment[]
+  communications   Communication[]
+  followUps        FollowUp[]
+
+  @@index([status])
+  @@index([customerId])
+  @@index([businessId])
+  @@map("orders")
+}
+
+model OrderItem {
+  id                Int       @id @default(autoincrement())
+  orderId           Int
+  skuId             Int
+  measurementId     Int?
+  measurementItemId Int?
+  room              String?
+  productName       String
+  quantity          Decimal   @db.Decimal(10, 2)
+  rate              Decimal   @db.Decimal(12, 2)
+  serviceCharge     Decimal   @default(0) @db.Decimal(12, 2)
+  discountPercent   Decimal   @default(0) @db.Decimal(5, 2)
+  discountAmount    Decimal   @default(0) @db.Decimal(12, 2)
+  taxPercent        Decimal   @default(18) @db.Decimal(5, 2)
+  taxAmount         Decimal   @default(0) @db.Decimal(12, 2)
+  amount            Decimal   @db.Decimal(14, 2)
+  status            String    @default("PENDING")
+  // Individual item lifecycle: PENDING → PROCUREMENT_PENDING → MATERIAL_AVAILABLE → TAILORING → QC_PENDING → QC_PASSED → QC_FAILED → PACKED → INSTALLED → RESIZING
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  order             Order              @relation(fields: [orderId], references: [id])
+  sku               SKU                @relation(fields: [skuId], references: [id])
+  measurement       Measurement?       @relation(fields: [measurementId], references: [id])
+  measurementItem   MeasurementItem?   @relation(fields: [measurementItemId], references: [id])
+  tailoringOrders   TailoringOrder[]
+  qcInspections     QCInspection[]
+  resizingRequests  ResizingRequest[]
+  packetItems       PacketItem[]
+
+  @@map("order_items")
+}
+
+model OrderStatusHistory {
+  id          Int       @id @default(autoincrement())
+  orderId     Int
+  fromStatus  String?
+  toStatus    String
+  changedById Int?
+  reason      String?
+  createdAt   DateTime  @default(now())
+
+  order       Order     @relation(fields: [orderId], references: [id])
+
+  @@map("order_status_history")
+}
+
+// =============================================================================
+// PHASE 4 — OPERATIONS: Inventory, Stock, PO, GRN
+// =============================================================================
+
+model Stock {
+  id               Int       @id @default(autoincrement())
+  skuId            Int
+  warehouse        String    @default("MAIN")
+  availableQty     Decimal   @default(0) @db.Decimal(10, 2)
+  reservedQty      Decimal   @default(0) @db.Decimal(10, 2)
+  issuedQty        Decimal   @default(0) @db.Decimal(10, 2)
+  unit             String    @default("piece")
+  updatedAt        DateTime  @updatedAt
+
+  sku              SKU       @relation(fields: [skuId], references: [id])
+
+  @@unique([skuId, warehouse])
+  @@map("stocks")
+}
+
+model StockRequest {
+  id              Int       @id @default(autoincrement())
+  businessId      String    @unique @default("")   // STK-0001
+  orderId         Int
+  skuId           Int
+  orderQty        Decimal   @db.Decimal(10, 2)
+  requestedQty    Decimal   @db.Decimal(10, 2)
+  issuedQty       Decimal   @default(0) @db.Decimal(10, 2)
+  warehouse       String    @default("MAIN")
+  status          String    @default("DRAFT")  // DRAFT, SUBMITTED, APPROVED, PROCESSING, ISSUED, COMPLETED
+  requestedById   Int
+  approvedById    Int?
+  approvedAt      DateTime?
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  order           Order     @relation(fields: [orderId], references: [id])
+  sku             SKU       @relation(fields: [skuId], references: [id])
+  requestedBy     User      @relation("StockRequestedBy", fields: [requestedById], references: [id])
+  approvedBy      User?     @relation("StockApprovedBy", fields: [approvedById], references: [id])
+
+  @@map("stock_requests")
+}
+
+model PurchaseOrder {
+  id              Int       @id @default(autoincrement())
+  businessId      String    @unique @default("")   // PO-0001
+  vendorId        Int
+  orderId         Int?
+  totalAmount     Decimal   @db.Decimal(14, 2)
+  expectedDelivery DateTime?
+  terms           String?
+  status          String    @default("DRAFT")  // DRAFT, SUBMITTED, APPROVED, SENT, PARTIALLY_RECEIVED, FULLY_RECEIVED, CLOSED
+  portalRequired  Boolean   @default(false)
+  portalReference String?
+  portalStatus    String?
+  createdById     Int
+  approvedById    Int?
+  approvedAt      DateTime?
+  sentAt          DateTime?
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  vendor          Vendor              @relation(fields: [vendorId], references: [id])
+  order           Order?              @relation(fields: [orderId], references: [id])
+  createdBy       User                @relation("POCreatedBy", fields: [createdById], references: [id])
+  approvedBy      User?               @relation("POApprovedBy", fields: [approvedById], references: [id])
+  items           PurchaseOrderItem[]
+  goodsReceipts   GoodsReceipt[]
+
+  @@index([status])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id          Int       @id @default(autoincrement())
+  poId        Int
+  skuId       Int
+  quantity    Decimal   @db.Decimal(10, 2)
+  rate        Decimal   @db.Decimal(12, 2)
+  amount      Decimal   @db.Decimal(14, 2)
+  receivedQty Decimal   @default(0) @db.Decimal(10, 2)
+  notes       String?
+  createdAt   DateTime  @default(now())
+
+  purchaseOrder PurchaseOrder @relation(fields: [poId], references: [id], onDelete: Cascade)
+  sku           SKU           @relation(fields: [skuId], references: [id])
+
+  @@map("purchase_order_items")
+}
+
+model GoodsReceipt {
+  id              Int       @id @default(autoincrement())
+  businessId      String    @unique @default("")   // GRN-0001
+  poId            Int
+  vendorId        Int
+  receivedDate    DateTime  @default(now())
+  verifiedById    Int
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  purchaseOrder   PurchaseOrder      @relation(fields: [poId], references: [id])
+  vendor          Vendor             @relation(fields: [vendorId], references: [id])
+  verifiedBy      User               @relation("GRNVerifiedBy", fields: [verifiedById], references: [id])
+  items           GoodsReceiptItem[]
+
+  @@map("goods_receipts")
+}
+
+model GoodsReceiptItem {
+  id              Int       @id @default(autoincrement())
+  grnId           Int
+  skuId           Int
+  orderedQty      Decimal   @db.Decimal(10, 2)
+  receivedQty     Decimal   @db.Decimal(10, 2)
+  shortQty        Decimal   @default(0) @db.Decimal(10, 2)
+  condition       String    @default("GOOD")  // GOOD, DAMAGED, PARTIAL_DAMAGE
+  notes           String?
+  createdAt       DateTime  @default(now())
+
+  goodsReceipt    GoodsReceipt @relation(fields: [grnId], references: [id], onDelete: Cascade)
+  sku             SKU          @relation(fields: [skuId], references: [id])
+
+  @@map("goods_receipt_items")
+}
+
+// =============================================================================
+// PHASE 5 — PRODUCTION: Tailoring, QC, Packing
+// =============================================================================
+
+model TailoringOrder {
+  id              Int       @id @default(autoincrement())
+  businessId      String    @unique @default("")   // TLR-0001
+  orderId         Int
+  orderItemId     Int
+  skuId           Int
+  fabric          String?
+  quantity        Decimal   @db.Decimal(10, 2)
+  room            String?
+  requiredOutput  String?
+  measurements    String?   // JSON or description of required measurements
+  assignedToId    Int?
+  status          String    @default("PENDING")  // PENDING, ASSIGNED, IN_PRODUCTION, COMPLETED, DISPATCHED
+  startedAt       DateTime?
+  completedAt     DateTime?
+  dispatchedAt    DateTime?
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  order           Order        @relation(fields: [orderId], references: [id])
+  orderItem       OrderItem    @relation(fields: [orderItemId], references: [id])
+  sku             SKU          @relation(fields: [skuId], references: [id])
+  assignedTo      User?        @relation("TailoringAssignedTo", fields: [assignedToId], references: [id])
+  qcInspections   QCInspection[]
+
+  @@map("tailoring_orders")
+}
+
+model QCInspection {
+  id              Int       @id @default(autoincrement())
+  businessId      String    @unique @default("")   // QC-0001
+  tailoringOrderId Int
+  orderItemId     Int
+  productCorrect  Boolean   @default(false)
+  quantityCorrect Boolean   @default(false)
+  measurementCorrect Boolean @default(false)
+  fabricCorrect   Boolean   @default(false)
+  stitchingCorrect Boolean  @default(false)
+  finishingOk     Boolean   @default(false)
+  result          String    // PASS, FAIL
+  failReason      String?
+  inspectedById   Int
+  inspectedAt     DateTime  @default(now())
+  notes           String?
+  createdAt       DateTime  @default(now())
+
+  tailoringOrder  TailoringOrder @relation(fields: [tailoringOrderId], references: [id])
+  orderItem       OrderItem      @relation(fields: [orderItemId], references: [id])
+  inspectedBy     User           @relation("QCInspectedBy", fields: [inspectedById], references: [id])
+
+  @@map("qc_inspections")
+}
+
+model PackingSlip {
+  id              Int       @id @default(autoincrement())
+  businessId      String    @unique @default("")   // PKG-0001
+  customerId      Int
+  orderId         Int
+  totalPackets    Int       @default(1)
+  preparedById    Int
+  preparedAt      DateTime  @default(now())
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  customer        Customer   @relation(fields: [customerId], references: [id])
+  order           Order      @relation(fields: [orderId], references: [id])
+  preparedBy      User       @relation("PackingPreparedBy", fields: [preparedById], references: [id])
+  packets         Packet[]
+
+  @@map("packing_slips")
+}
+
+model Packet {
+  id              Int       @id @default(autoincrement())
+  packingSlipId   Int
+  packetNumber    Int
+  notes           String?
+  createdAt       DateTime  @default(now())
+
+  packingSlip     PackingSlip  @relation(fields: [packingSlipId], references: [id], onDelete: Cascade)
+  items           PacketItem[]
+
+  @@map("packets")
+}
+
+model PacketItem {
+  id              Int       @id @default(autoincrement())
+  packetId        Int
+  orderItemId     Int
+  quantity        Decimal   @db.Decimal(10, 2)
+  notes           String?
+  createdAt       DateTime  @default(now())
+
+  packet          Packet    @relation(fields: [packetId], references: [id], onDelete: Cascade)
+  orderItem       OrderItem @relation(fields: [orderItemId], references: [id])
+
+  @@map("packet_items")
+}
+
+// =============================================================================
+// PHASE 6 — FIELD OPERATIONS: Installation, Vehicles
+// =============================================================================
+
+model Installation {
+  id              Int       @id @default(autoincrement())
+  businessId      String    @unique @default("")   // INS-0001
+  customerId      Int
+  orderId         Int
+  siteId          Int?
+  scheduledDate   DateTime
+  scheduledTime   String?
+  vehicleId       Int?
+  status          String    @default("SCHEDULED")  // SCHEDULED, ASSIGNED, IN_PROGRESS, COMPLETED, DELAYED, CANCELLED
+  notes           String?
+  completedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  customer        Customer            @relation(fields: [customerId], references: [id])
+  order           Order               @relation(fields: [orderId], references: [id])
+  site            Site?               @relation(fields: [siteId], references: [id])
+  vehicle         Vehicle?            @relation(fields: [vehicleId], references: [id])
+  fieldEmployees  InstallationEmployee[]
+  tracking        FieldEmployeeTracking[]
+
+  @@map("installations")
+}
+
+model InstallationEmployee {
+  id              Int       @id @default(autoincrement())
+  installationId  Int
+  fieldEmployeeId Int
+  createdAt       DateTime  @default(now())
+
+  installation    Installation  @relation(fields: [installationId], references: [id], onDelete: Cascade)
+  fieldEmployee   FieldEmployee @relation(fields: [fieldEmployeeId], references: [id])
+
+  @@unique([installationId, fieldEmployeeId])
+  @@map("installation_employees")
+}
+
+model FieldEmployee {
+  id              Int       @id @default(autoincrement())
+  businessId      String    @unique @default("")   // FLD-0001
+  name            String
+  phone           String
+  email           String?
+  role            String?   // Installer, Measurer, Driver
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  installations   InstallationEmployee[]
+  tracking        FieldEmployeeTracking[]
+  vehicleTrips    VehicleTrip[]
+
+  @@map("field_employees")
+}
+
+model FieldEmployeeTracking {
+  id              Int       @id @default(autoincrement())
+  installationId  Int
+  fieldEmployeeId Int
+  scheduledTime   DateTime?
+  checkInTime     DateTime?
+  arrivalTime     DateTime?
+  startTime       DateTime?
+  completionTime  DateTime?
+  checkOutTime    DateTime?
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  installation    Installation  @relation(fields: [installationId], references: [id])
+  fieldEmployee   FieldEmployee @relation(fields: [fieldEmployeeId], references: [id])
+
+  @@map("field_employee_tracking")
+}
+
+model Vehicle {
+  id              Int       @id @default(autoincrement())
+  businessId      String    @unique @default("")   // VEH-0001
+  registrationNo  String    @unique
+  vehicleType     String
+  assignedTeam    String?
+  status          String    @default("AVAILABLE")  // AVAILABLE, IN_USE, MAINTENANCE
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  installations   Installation[]
+  trips           VehicleTrip[]
+
+  @@map("vehicles")
+}
+
+model VehicleTrip {
+  id              Int       @id @default(autoincrement())
+  vehicleId       Int
+  fieldEmployeeId Int?
+  purpose         String
+  taskType        String?   // MEASUREMENT, INSTALLATION, DELIVERY
+  taskId          Int?
+  startKm         Decimal?  @db.Decimal(10, 2)
+  endKm           Decimal?  @db.Decimal(10, 2)
+  startTime       DateTime?
+  endTime         DateTime?
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  vehicle         Vehicle       @relation(fields: [vehicleId], references: [id])
+  fieldEmployee   FieldEmployee? @relation(fields: [fieldEmployeeId], references: [id])
+
+  @@map("vehicle_trips")
+}
+
+// =============================================================================
+// PHASE 7 — FINANCE: Payments
+// =============================================================================
+
+model Payment {
+  id              Int       @id @default(autoincrement())
+  businessId      String    @unique @default("")   // PAY-0001
+  customerId      Int
+  orderId         Int
+  paymentType     String    // ADVANCE, PARTIAL, FULL, BALANCE
+  amount          Decimal   @db.Decimal(14, 2)
+  paymentMethod   String?   // CASH, UPI, BANK_TRANSFER, CHEQUE, CARD
+  referenceNo     String?
+  paymentDate     DateTime  @default(now())
+  status          String    @default("PENDING")  // PENDING, CONFIRMED, FAILED, REFUNDED
+  zohoReceiptId   String?
+  zohoSynced      Boolean   @default(false)
+  recordedById    Int
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  customer        Customer  @relation(fields: [customerId], references: [id])
+  order           Order     @relation(fields: [orderId], references: [id])
+  recordedBy      User      @relation("PaymentRecordedBy", fields: [recordedById], references: [id])
+
+  @@index([orderId])
+  @@map("payments")
+}
+
+// =============================================================================
+// PHASE 5 (CONTINUED) — RESIZING / RECTIFICATION
+// =============================================================================
+
+model ResizingRequest {
+  id                  Int       @id @default(autoincrement())
+  businessId          String    @unique @default("")   // RSZ-0001
+  orderId             Int?
+  orderItemId         Int
+  measurementItemId   Int?
+  originalWidth       Decimal?  @db.Decimal(10, 2)
+  originalHeight      Decimal?  @db.Decimal(10, 2)
+  requiredWidth       Decimal?  @db.Decimal(10, 2)
+  requiredHeight      Decimal?  @db.Decimal(10, 2)
+  reason              String    // WRONG_MEASUREMENT, WRONG_STITCHING, INSTALLATION_ISSUE, CUSTOMER_CHANGED, OTHER
+  reasonDetail        String?
+  status              String    @default("CREATED")  // CREATED, TAILORING, QC, PACKED, REINSTALLATION_SCHEDULED, COMPLETED
+  createdById         Int
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  orderItem           OrderItem       @relation(fields: [orderItemId], references: [id])
+  measurementItem     MeasurementItem? @relation(fields: [measurementItemId], references: [id])
+  createdBy           User            @relation("ResizingCreatedBy", fields: [createdById], references: [id])
+
+  @@map("resizing_requests")
+}
+
+// =============================================================================
+// PHASE 8 — INTELLIGENCE: Notifications, Communications, Audit
+// =============================================================================
+
+model Notification {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  type        String    // MEASUREMENT_PENDING, QC_FAILED, PAYMENT_RECEIVED, etc.
+  title       String
+  message     String
+  entityType  String?   // order, quotation, etc.
+  entityId    Int?
+  isRead      Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+
+  user        User      @relation(fields: [userId], references: [id])
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+model Communication {
+  id              Int       @id @default(autoincrement())
+  customerId      Int
+  orderId         Int?
+  type            String    // WHATSAPP, EMAIL, SMS, CALL, NOTE
+  direction       String    @default("OUTBOUND")  // INBOUND, OUTBOUND
+  subject         String?
+  message         String
+  attachmentUrl   String?
+  senderId        Int?
+  recipientPhone  String?
+  recipientEmail  String?
+  deliveryStatus  String?   // SENT, DELIVERED, READ, FAILED
+  relatedEntity   String?   // quotation, measurement, installation, payment
+  relatedEntityId Int?
+  createdAt       DateTime  @default(now())
+
+  customer        Customer  @relation(fields: [customerId], references: [id])
+  order           Order?    @relation(fields: [orderId], references: [id])
+  sender          User?     @relation("CommunicationSender", fields: [senderId], references: [id])
+
+  @@index([customerId])
+  @@map("communications")
+}
+
+model AuditLog {
+  id          Int       @id @default(autoincrement())
+  userId      Int?
+  userEmail   String?
+  action      String    // CREATE, UPDATE, DELETE, STATUS_CHANGE, PRICE_CHANGE, LOGIN, etc.
+  entityType  String    // customer, order, sku, quotation, etc.
+  entityId    String?
+  oldValue    String?   // JSON
+  newValue    String?   // JSON
+  ipAddress   String?
+  reason      String?
+  createdAt   DateTime  @default(now())
+
+  user        User?     @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

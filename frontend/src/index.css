@@ -1,0 +1,207 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  /* Aradhana brand — bright business yellow */
+  --color-brand-50: #fffdf5;
+  --color-brand-100: #fff8d6;
+  --color-brand-150: #fff4bf;
+  --color-brand-200: #fbeb9c;
+  --color-brand-300: #f7de63;
+  --color-brand-400: #f5d02a;
+  --color-brand-500: #f4c400;
+  --color-brand-600: #d9b000;
+  --color-brand-700: #b08f00;
+  --color-brand-800: #7a5e00;
+
+  /* Legacy alias kept so older utility names resolve to the brand */
+  --color-primary-50: #fffdf5;
+  --color-primary-100: #fff8d6;
+  --color-primary-200: #fbeb9c;
+  --color-primary-300: #f7de63;
+  --color-primary-400: #f5d02a;
+  --color-primary-500: #f4c400;
+  --color-primary-600: #d9b000;
+  --color-primary-700: #b08f00;
+  --color-primary-800: #7a5e00;
+
+  /* Neutral surfaces */
+  --color-canvas: #fafaf8;
+  --color-surface: #ffffff;
+  --color-ink: #181818;
+  --color-ink-2: #242424;
+  --color-muted: #707070;
+  --color-line: #e8e8e8;
+  --color-line-soft: #f0f0f0;
+  --color-hover: #fafaf5;
+  --color-selected: #fff4bf;
+
+  /* Elevation — deliberately restrained */
+  --shadow-card: 0 1px 2px rgba(24, 24, 24, 0.04);
+  --shadow-pop: 0 10px 30px -14px rgba(24, 24, 24, 0.22);
+  --shadow-brand: 0 8px 20px -12px rgba(244, 196, 0, 0.6);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink-2);
+  -webkit-font-smoothing: antialiased;
+  font-family: var(--font-sans);
+  font-size: 14px;
+}
+
+* {
+  border-color: var(--color-line);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: #d9d9d4;
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #bfbfb8;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scroll-slim::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+/* ---------------- Motion ---------------- */
+.fade-in {
+  animation: fadeIn 0.25s ease;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.slide-up {
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.slide-in-left {
+  animation: slideInLeft 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.pop-in {
+  animation: popIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.98) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: #efefec;
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.75), transparent);
+  animation: shimmer 1.4s infinite;
+}
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* ---------------- Brand helpers ---------------- */
+.brand-gradient {
+  background-image: linear-gradient(135deg, #f5d02a 0%, #f4c400 60%, #e0b500 100%);
+}
+.brand-text {
+  color: var(--color-brand-800);
+}
+.grid-lines {
+  background-image:
+    linear-gradient(to right, rgba(24, 24, 24, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(24, 24, 24, 0.05) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* ---------------- Professional tables ---------------- */
+.data-table thead th {
+  background: #fafafa;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8a8a8a;
+}
+.data-table tbody tr {
+  height: 54px;
+}
+.data-table tbody tr:hover {
+  background: var(--color-hover);
+}
+.data-table tbody tr.selected {
+  background: var(--color-selected);
+}
+
+/* ---------------- Recharts polish ---------------- */
+.recharts-cartesian-axis-tick text {
+  fill: #9a9a9a;
+  font-size: 11px;
+}
+.recharts-default-tooltip {
+  border-radius: 10px !important;
+  border: 1px solid var(--color-line) !important;
+  box-shadow: var(--shadow-pop) !important;
+}
+.recharts-surface:focus,
+.recharts-wrapper:focus {
+  outline: none;
+}
