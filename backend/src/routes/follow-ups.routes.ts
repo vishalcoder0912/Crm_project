@@ -174,6 +174,33 @@ router.post(
       throw new ValidationError(`channel must be one of: ${Object.values(FOLLOWUP_CHANNEL).join(', ')}`);
     }
 
+    const refMap: [string, unknown][] = [
+      ['enquiryId', body.enquiryId],
+      ['orderId', body.orderId],
+      ['branchId', body.branchId],
+      ['assignedToId', body.assignedToId],
+    ];
+    const refErrors: string[] = [];
+    await Promise.all(
+      refMap.map(async ([field, value]) => {
+        if (value === undefined || value === null || value === '') return;
+        const id = Number(value);
+        if (!Number.isFinite(id) || id <= 0) {
+          refErrors.push(`${field} must be a valid number`);
+          return;
+        }
+        let exists = false;
+        if (field === 'enquiryId') exists = !!(await prisma.enquiry.findUnique({ where: { id } }));
+        else if (field === 'orderId') exists = !!(await prisma.order.findUnique({ where: { id } }));
+        else if (field === 'branchId') exists = !!(await prisma.branch.findUnique({ where: { id } }));
+        else exists = !!(await prisma.user.findUnique({ where: { id } }));
+        if (!exists) refErrors.push(`${field} ${id} does not exist`);
+      })
+    );
+    if (refErrors.length) {
+      throw new ValidationError(refErrors.join('; '));
+    }
+
     const businessId = await generateBusinessId('followUp', 'follow_ups');
     const record = await prisma.followUp.create({
       data: {
@@ -212,10 +239,26 @@ router.patch(
 
     const body = req.body as any;
     const data: Record<string, unknown> = {};
-    for (const field of ['purpose', 'channel', 'priority', 'status', 'assignedToId', 'notes']) {
+    for (const field of ['purpose', 'channel', 'priority', 'status', 'notes']) {
       if (body[field] !== undefined) data[field] = body[field];
     }
     if (body.dueAt !== undefined) data.dueAt = new Date(body.dueAt);
+
+    if (body.assignedToId !== undefined) {
+      if (body.assignedToId === null || body.assignedToId === '') {
+        data.assignedToId = null;
+      } else {
+        const uid = Number(body.assignedToId);
+        if (!Number.isFinite(uid) || uid <= 0) {
+          throw new ValidationError('assignedToId must be a valid number');
+        }
+        const user = await prisma.user.findUnique({ where: { id: uid } });
+        if (!user) {
+          throw new ValidationError(`assignedToId ${uid} does not exist`);
+        }
+        data.assignedToId = uid;
+      }
+    }
 
     if (data.priority && !(Object.values(FOLLOWUP_PRIORITY) as string[]).includes(data.priority as string)) {
       throw new ValidationError(`priority must be one of: ${Object.values(FOLLOWUP_PRIORITY).join(', ')}`);

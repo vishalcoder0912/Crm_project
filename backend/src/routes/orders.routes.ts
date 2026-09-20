@@ -17,6 +17,23 @@ import { ORDER_STATUS_TRANSITIONS, ORDER_STATUS } from '../config/constants';
 
 const router = Router();
 
+function parseId(id: string): number {
+  const parsed = parseInt(id, 10);
+  if (isNaN(parsed)) {
+    throw new ValidationError(`Invalid ID: ${id}`);
+  }
+  return parsed;
+}
+
+function toIdOrThrow(v: unknown, field: string): number | undefined {
+  if (v === undefined || v === null || v === '') return undefined;
+  const n = Number(v);
+  if (!Number.isInteger(n)) {
+    throw new ValidationError(`${field} must be a valid number`);
+  }
+  return n;
+}
+
 const ORDER_INCLUDES = {
   customer: { select: { id: true, name: true, phone: true, email: true } },
   quotation: { select: { id: true, businessId: true } },
@@ -45,41 +62,43 @@ async function resolveOrderItems(items: OrderItemInput[]) {
   if (!Array.isArray(items) || items.length === 0) {
     throw new ValidationError('At least one item is required');
   }
-  const skuIds = [...new Set(items.map((i) => Number(i.skuId)))];
-  const skus = await prisma.sku.findMany({ where: { id: { in: skuIds } } });
-  if (skus.length !== skuIds.length) {
-    throw new ValidationError('One or more SKUs are invalid');
-  }
-  const skuMap = new Map(skus.map((s) => [s.id, s]));
+  return Promise.all(
+    items.map(async (raw) => {
+      const skuId = toIdOrThrow(raw.skuId, 'skuId');
+      if (skuId === undefined) {
+        throw new ValidationError('Each item requires a valid skuId');
+      }
+      const sku = await prisma.sku.findUnique({ where: { id: skuId } });
+      if (!sku) {
+        throw new ValidationError(`SKU ${skuId} does not exist`);
+      }
+      const rate = Number(raw.rate) || 0;
+      const serviceCharge = Number(raw.serviceCharge ?? sku.serviceCharge) || 0;
+      const discountPercent = Number(raw.discountPercent) || 0;
+      const taxPercent = Number(raw.taxPercent ?? sku.taxPercent) || 18;
+      const quantity = Number(raw.quantity) || 0;
 
-  return items.map((item) => {
-    const sku = skuMap.get(Number(item.skuId))!;
-    const rate = Number(item.rate) || 0;
-    const serviceCharge = Number(item.serviceCharge ?? sku.serviceCharge) || 0;
-    const discountPercent = Number(item.discountPercent) || 0;
-    const taxPercent = Number(item.taxPercent ?? sku.taxPercent) || 18;
-    const quantity = Number(item.quantity) || 0;
+      const pricing = computeLineTotals({ quantity, rate, serviceCharge, discountPercent, taxPercent });
 
-    const pricing = computeLineTotals({ quantity, rate, serviceCharge, discountPercent, taxPercent });
-
-    return {
-      skuId: sku.id,
-      measurementId: item.measurementId ?? null,
-      measurementItemId: item.measurementItemId ?? null,
-      room: item.room ?? null,
-      productName: sku.name,
-      quantity,
-      rate,
-      serviceCharge,
-      discountPercent,
-      discountAmount: pricing.discountAmount,
-      taxPercent,
-      taxAmount: pricing.taxAmount,
-      amount: pricing.amount,
-      status: 'PENDING',
-      notes: item.notes ?? null,
-    };
-  });
+      return {
+        skuId: sku.id,
+        measurementId: raw.measurementId ?? null,
+        measurementItemId: raw.measurementItemId ?? null,
+        room: raw.room ?? null,
+        productName: sku.name,
+        quantity,
+        rate,
+        serviceCharge,
+        discountPercent,
+        discountAmount: pricing.discountAmount,
+        taxPercent,
+        taxAmount: pricing.taxAmount,
+        amount: pricing.amount,
+        status: 'PENDING',
+        notes: raw.notes ?? null,
+      };
+    })
+  );
 }
 
 async function recomputeOrderTotals(orderId: number) {
@@ -114,15 +133,27 @@ router.post(
   asyncHandler(async (req: AuthRequest, res) => {
     const body = req.body as any;
 
-    const customer = await prisma.customer.findUnique({ where: { id: Number(body.customerId) } });
+    const customerId = toIdOrThrow(body.customerId, 'customerId');
+    if (customerId === undefined) {
+      throw new ValidationError('customerId is required and must be a number');
+    }
+    const customer = await prisma.customer.findUnique({ where: { id: customerId } });
     if (!customer) {
       throw new ValidationError('customerId does not exist');
     }
-    if (body.quotationId) {
-      const quotation = await prisma.quotation.findUnique({ where: { id: Number(body.quotationId) } });
+
+    const quotationId = toIdOrThrow(body.quotationId, 'quotationId');
+    if (quotationId !== undefined) {
+      const quotation = await prisma.quotation.findUnique({ where: { id: quotationId } });
       if (!quotation) {
         throw new ValidationError('quotationId does not exist');
       }
+    }
+    const siteId = toIdOrThrow(body.siteId, 'siteId');
+
+    const status = body.status ?? ORDER_STATUS.CONFIRMED;
+    if (!Object.values(ORDER_STATUS).includes(status)) {
+      throw new ValidationError(`Invalid order status: ${status}`);
     }
 
     const items = await resolveOrderItems(body.items);
@@ -133,16 +164,16 @@ router.post(
     const order = await prisma.order.create({
       data: {
         businessId,
-        customerId: Number(body.customerId),
-        quotationId: body.quotationId ?? null,
-        siteId: body.siteId ?? null,
+        customerId,
+        quotationId: quotationId ?? null,
+        siteId: siteId ?? null,
         subtotal: totals.subtotal,
         discountAmount: totals.discountAmount,
         taxAmount: totals.taxAmount,
         totalAmount: totals.totalAmount,
         advanceAmount,
         balanceAmount: round2(totals.totalAmount - advanceAmount),
-        status: body.status ?? 'CONFIRMED',
+        status,
         paymentStatus: advanceAmount > 0 ? 'PARTIAL' : 'PENDING',
         createdById: req.user!.userId,
         notes: body.notes ?? null,
@@ -193,9 +224,9 @@ router.get(
   authenticate,
   requirePermission('orders.read'),
   asyncHandler(async (req: AuthRequest, res) => {
-    const id = parseInt(req.params.id, 10);
-    const order = await prisma.order.findUnique({
-      where: { id },
+    const id = parseId(req.params.id);
+    const order = await prisma.order.findFirst({
+      where: { id, deletedAt: null },
       include: {
         ...ORDER_INCLUDES,
         items: {
@@ -215,8 +246,8 @@ router.patch(
   authenticate,
   requirePermission('orders.update'),
   asyncHandler(async (req: AuthRequest, res) => {
-    const id = parseInt(req.params.id, 10);
-    const order = await prisma.order.findUnique({ where: { id } });
+    const id = parseId(req.params.id);
+    const order = await prisma.order.findFirst({ where: { id, deletedAt: null } });
     if (!order) {
       throw new NotFoundError('Order', id);
     }
@@ -225,12 +256,30 @@ router.patch(
     const data: Record<string, unknown> = {};
 
     if (advanceAmount !== undefined) {
-      const advance = round2(Number(advanceAmount));
+      const advanceNum = Number(advanceAmount);
+      if (isNaN(advanceNum)) {
+        throw new ValidationError('advanceAmount must be a valid number');
+      }
+      const advance = round2(advanceNum);
       data.advanceAmount = advance;
       data.balanceAmount = round2(Number(order.totalAmount) - advance);
     }
     if (notes !== undefined) data.notes = notes;
-    if (siteId !== undefined) data.siteId = siteId ?? null;
+    if (siteId !== undefined) {
+      if (siteId === null || siteId === '') {
+        data.siteId = null;
+      } else {
+        const s = toIdOrThrow(siteId, 'siteId');
+        if (s === undefined) {
+          throw new ValidationError('siteId must be a valid number');
+        }
+        data.siteId = s;
+      }
+    }
+
+    if (Object.keys(data).length === 0) {
+      throw new ValidationError('Nothing to update');
+    }
 
     const updated = await prisma.order.update({ where: { id }, data, include: ORDER_INCLUDES });
     if (advanceAmount !== undefined) {
@@ -259,10 +308,10 @@ router.post(
   authenticate,
   requirePermission('orders.update'),
   asyncHandler(async (req: AuthRequest, res) => {
-    const id = parseInt(req.params.id, 10);
+    const id = parseId(req.params.id);
     const { status, reason } = req.body as { status: string; reason?: string };
 
-    const order = await prisma.order.findUnique({ where: { id } });
+    const order = await prisma.order.findFirst({ where: { id, deletedAt: null } });
     if (!order) {
       throw new NotFoundError('Order', id);
     }
@@ -304,7 +353,7 @@ router.get(
   authenticate,
   requirePermission('orders.read'),
   asyncHandler(async (req: AuthRequest, res) => {
-    const id = parseInt(req.params.id, 10);
+    const id = parseId(req.params.id);
     const history = await prisma.orderStatusHistory.findMany({
       where: { orderId: id },
       orderBy: { createdAt: 'desc' },
@@ -318,8 +367,8 @@ router.post(
   authenticate,
   requirePermission('orders.update'),
   asyncHandler(async (req: AuthRequest, res) => {
-    const id = parseInt(req.params.id, 10);
-    const order = await prisma.order.findUnique({ where: { id } });
+    const id = parseId(req.params.id);
+    const order = await prisma.order.findFirst({ where: { id, deletedAt: null } });
     if (!order) {
       throw new NotFoundError('Order', id);
     }
@@ -342,8 +391,8 @@ router.delete(
   authenticate,
   requirePermission('orders.delete'),
   asyncHandler(async (req: AuthRequest, res) => {
-    const id = parseInt(req.params.id, 10);
-    const order = await prisma.order.findUnique({ where: { id } });
+    const id = parseId(req.params.id);
+    const order = await prisma.order.findFirst({ where: { id, deletedAt: null } });
     if (!order) {
       throw new NotFoundError('Order', id);
     }

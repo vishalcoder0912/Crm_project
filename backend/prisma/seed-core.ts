@@ -86,11 +86,20 @@ export async function seedCore(
   const productSeeds = [
     { key: 'blackout', name: 'Blackout Curtain', category: 'Curtains', productType: 'Eyelet', description: 'Triple-weave blackout fabric curtain' },
     { key: 'sheer', name: 'Sheer Curtain', category: 'Curtains', productType: 'Pinch Pleat', description: 'Light diffusing sheer curtain' },
+    { key: 'velvet-cur', name: 'Premium Velvet Curtain', category: 'Curtains', productType: 'Custom Stitch', description: 'Heavy luxury velvet drape' },
     { key: 'linen', name: 'Linen Curtain', category: 'Curtains', productType: 'Rod Pocket', description: 'Natural linen blend curtain' },
-    { key: 'roman', name: 'Roman Blind', category: 'Blinds', productType: 'Fold', description: 'Fabric roman blind with folds' },
+    { key: 'venetian', name: 'Venetian Blind', category: 'Blinds', productType: 'Horizontal Slat', description: 'Modern aluminum/wood venetian blind' },
+    { key: 'honeycomb', name: 'Honeycomb Blind', category: 'Blinds', productType: 'Cellular', description: 'Energy saving honeycomb cellular blind' },
     { key: 'roller', name: 'Roller Blind', category: 'Blinds', productType: 'Sunscreen', description: 'Sunscreen roller blind' },
     { key: 'zebra', name: 'Zebra Blind', category: 'Blinds', productType: 'Dual Layer', description: 'Day-night dual layer blind' },
-    { key: 'wooden', name: 'Wooden Blind', category: 'Blinds', productType: '50mm Slat', description: 'Basswood slat venetian blind' },
+    { key: 'wallpaper-3d', name: 'EXCEL 3D Designer Wallpaper', category: 'Wallpapers', productType: '3D Modern', description: 'Textured modern 3D vinyl wallpaper' },
+    { key: 'wallpaper-floral', name: 'EXCEL Floral Elegance Wallpaper', category: 'Wallpapers', productType: 'Floral', description: 'Elegant floral pattern vinyl wallpaper' },
+    { key: 'mattress-ortho', name: 'Spring Fit Orthopedic Mattress', category: 'Mattresses', productType: 'Orthopedic', description: 'Posture-support bonded orthopedic mattress' },
+    { key: 'mattress-memory', name: 'Spring Fit Memory Foam Mattress', category: 'Mattresses', productType: 'Memory Foam', description: 'Dual comfort body contouring foam mattress' },
+    { key: 'upholstery-velvet', name: 'AikemI Velvet Upholstery Fabric', category: 'Upholstery', productType: 'Velvet', description: 'High-durability velvet fabric for sofas and chairs' },
+    { key: 'upholstery-chenille', name: 'LIVINGO Chenille Fabric', category: 'Upholstery', productType: 'Chenille', description: 'Textured luxury upholstery fabric' },
+    { key: 'bed-linen', name: 'Premium Bed Linen Set', category: 'Bed Linen', productType: 'Cotton', description: 'Hotel-quality 400TC bedsheet and pillow covers' },
+    { key: 'bath-linen', name: 'Luxury Bath Linen', category: 'Bath Linen', productType: 'Terry', description: 'Plush combed cotton bath towel set' },
     { key: 'curtain-rod', name: 'Curtain Rod', category: 'Rods', productType: 'Single', description: 'Powder coated steel curtain rod' },
     { key: 'double-rod', name: 'Double Curtain Rod', category: 'Rods', productType: 'Double', description: 'Twin rod for sheer + main curtain' },
     { key: 'track', name: 'Motorized Track', category: 'Rods', productType: 'Motorized', description: 'Remote operated curtain track' },
@@ -109,20 +118,28 @@ export async function seedCore(
 
   // ---- SKUs ----
   const skuSeeds: Array<{ key: string; sku: string; productKey: string; vendorKey: string; name: string; unit: string; cost: number; sell: number; service: number; tax: number }> = [
-    { key: 'cur-blackout', sku: 'CUR-BLK-EYE-01', productKey: 'blackout', vendorKey: 'fabrics', name: 'Blackout Eyelet Curtain', unit: 'sqft', cost: 185, sell: 340, service: 45, tax: 18 },
-    { key: 'cur-sheer', sku: 'CUR-SHR-PIN-01', productKey: 'sheer', vendorKey: 'fabrics', name: 'Sheer Pinch Pleat Curtain', unit: 'sqft', cost: 120, sell: 230, service: 35, tax: 18 },
-    { key: 'cur-linen', sku: 'CUR-LIN-ROD-01', productKey: 'linen', vendorKey: 'soft', name: 'Linen Rod Pocket Curtain', unit: 'sqft', cost: 150, sell: 285, service: 40, tax: 18 },
-    { key: 'blind-roman', sku: 'BLD-ROM-FLD-01', productKey: 'roman', vendorKey: 'fabrics', name: 'Roman Fold Blind', unit: 'sqft', cost: 210, sell: 395, service: 50, tax: 18 },
-    { key: 'blind-roller', sku: 'BLD-ROL-SUN-01', productKey: 'roller', vendorKey: 'blinds', name: 'Sunscreen Roller Blind', unit: 'sqft', cost: 160, sell: 310, service: 45, tax: 18 },
-    { key: 'blind-zebra', sku: 'BLD-ZBR-DUAL-01', productKey: 'zebra', vendorKey: 'blinds', name: 'Zebra Dual Layer Blind', unit: 'sqft', cost: 230, sell: 430, service: 55, tax: 18 },
-    { key: 'blind-wooden', sku: 'BLD-WDN-50MM-01', productKey: 'wooden', vendorKey: 'blinds', name: 'Wooden Venetian Blind 50mm', unit: 'sqft', cost: 270, sell: 510, service: 60, tax: 18 },
-    { key: 'rod-single', sku: 'ROD-SGL-PWD-01', productKey: 'curtain-rod', vendorKey: 'rods', name: 'Powder Coated Single Rod', unit: 'piece', cost: 480, sell: 850, service: 100, tax: 18 },
-    { key: 'rod-double', sku: 'ROD-DBL-PWD-01', productKey: 'double-rod', vendorKey: 'rods', name: 'Powder Coated Double Rod', unit: 'piece', cost: 760, sell: 1350, service: 150, tax: 18 },
-    { key: 'track-motor', sku: 'TRK-MTR-REM-01', productKey: 'track', vendorKey: 'track', name: 'Motorized Curtain Track', unit: 'meter', cost: 3200, sell: 5400, service: 600, tax: 18 },
-    { key: 'hw-bracket', sku: 'HW-BRK-SET-01', productKey: 'hardware', vendorKey: 'rods', name: 'Curtain Hardware Set', unit: 'set', cost: 260, sell: 520, service: 50, tax: 18 },
-    { key: 'hw-ring', sku: 'HW-RNG-BRS-01', productKey: 'hardware', vendorKey: 'rods', name: 'Brass Curtain Rings (set of 12)', unit: 'set', cost: 140, sell: 300, service: 0, tax: 18 },
-    { key: 'svc-install', sku: 'SVC-INS-STD-01', productKey: 'install', vendorKey: 'track', name: 'Standard Installation Charge', unit: 'piece', cost: 300, sell: 650, service: 0, tax: 18 },
-    { key: 'svc-measure', sku: 'SVC-MSR-STD-01', productKey: 'install', vendorKey: 'track', name: 'Measurement Visit Charge', unit: 'piece', cost: 150, sell: 350, service: 0, tax: 18 },
+    { key: 'cur-blackout', sku: 'AF-CUR-BLK-01', productKey: 'blackout', vendorKey: 'fabrics', name: 'Blackout Eyelet Curtain', unit: 'sqft', cost: 185, sell: 340, service: 45, tax: 12 },
+    { key: 'cur-sheer', sku: 'AF-CUR-SHR-01', productKey: 'sheer', vendorKey: 'fabrics', name: 'Sheer Pinch Pleat Curtain', unit: 'sqft', cost: 120, sell: 230, service: 35, tax: 12 },
+    { key: 'cur-velvet', sku: 'AF-CUR-VLV-01', productKey: 'velvet-cur', vendorKey: 'fabrics', name: 'Royal Velvet Curtain', unit: 'sqft', cost: 240, sell: 460, service: 60, tax: 12 },
+    { key: 'cur-linen', sku: 'AF-CUR-LIN-01', productKey: 'linen', vendorKey: 'soft', name: 'Linen Rod Pocket Curtain', unit: 'sqft', cost: 150, sell: 285, service: 40, tax: 12 },
+    { key: 'bld-venetian', sku: 'AF-BLD-VEN-01', productKey: 'venetian', vendorKey: 'blinds', name: 'Venetian Aluminum Slat Blind', unit: 'sqft', cost: 220, sell: 420, service: 50, tax: 18 },
+    { key: 'bld-honeycomb', sku: 'AF-BLD-HON-01', productKey: 'honeycomb', vendorKey: 'blinds', name: 'Honeycomb Cellular Blind', unit: 'sqft', cost: 280, sell: 540, service: 60, tax: 18 },
+    { key: 'blind-roller', sku: 'AF-BLD-ROL-01', productKey: 'roller', vendorKey: 'blinds', name: 'Sunscreen Roller Blind', unit: 'sqft', cost: 160, sell: 310, service: 45, tax: 18 },
+    { key: 'blind-zebra', sku: 'AF-BLD-ZBR-01', productKey: 'zebra', vendorKey: 'blinds', name: 'Zebra Dual Layer Blind', unit: 'sqft', cost: 230, sell: 430, service: 55, tax: 18 },
+    { key: 'wp-3d', sku: 'AF-WP-3D-01', productKey: 'wallpaper-3d', vendorKey: 'vinyl', name: 'EXCEL 3D Geometric Wallpaper', unit: 'roll', cost: 850, sell: 1650, service: 250, tax: 18 },
+    { key: 'wp-floral', sku: 'AF-WP-FLR-01', productKey: 'wallpaper-floral', vendorKey: 'vinyl', name: 'EXCEL Floral Motif Wallpaper', unit: 'roll', cost: 950, sell: 1850, service: 250, tax: 18 },
+    { key: 'mat-ortho', sku: 'AF-MAT-ORT-01', productKey: 'mattress-ortho', vendorKey: 'soft', name: 'Spring Fit Orthopedic Mattress 72x72', unit: 'piece', cost: 9800, sell: 18500, service: 0, tax: 18 },
+    { key: 'mat-memory', sku: 'AF-MAT-MEM-01', productKey: 'mattress-memory', vendorKey: 'soft', name: 'Spring Fit Dual Comfort Memory Foam', unit: 'piece', cost: 11500, sell: 22000, service: 0, tax: 18 },
+    { key: 'uph-velvet', sku: 'AF-UPH-VLV-01', productKey: 'upholstery-velvet', vendorKey: 'fabrics', name: 'AikemI Velvet Upholstery Fabric', unit: 'meter', cost: 550, sell: 1050, service: 150, tax: 12 },
+    { key: 'uph-chenille', sku: 'AF-UPH-CHN-01', productKey: 'upholstery-chenille', vendorKey: 'fabrics', name: 'LIVINGO Chenille Sofa Fabric', unit: 'meter', cost: 480, sell: 920, service: 150, tax: 12 },
+    { key: 'bed-lin-set', sku: 'AF-LIN-BED-01', productKey: 'bed-linen', vendorKey: 'soft', name: 'Pure Cotton King Bed Linen Set', unit: 'set', cost: 1200, sell: 2400, service: 0, tax: 12 },
+    { key: 'bath-lin-set', sku: 'AF-LIN-BTH-01', productKey: 'bath-linen', vendorKey: 'soft', name: 'Hotel Luxury Bath Linen Set', unit: 'set', cost: 750, sell: 1500, service: 0, tax: 12 },
+    { key: 'rod-single', sku: 'AF-ROD-SGL-01', productKey: 'curtain-rod', vendorKey: 'rods', name: 'Powder Coated Single Curtain Rod', unit: 'piece', cost: 480, sell: 850, service: 100, tax: 18 },
+    { key: 'rod-double', sku: 'AF-ROD-DBL-01', productKey: 'double-rod', vendorKey: 'rods', name: 'Powder Coated Double Rod', unit: 'piece', cost: 760, sell: 1350, service: 150, tax: 18 },
+    { key: 'track-motor', sku: 'AF-TRK-MTR-01', productKey: 'track', vendorKey: 'track', name: 'Motorized Curtain Track', unit: 'meter', cost: 3200, sell: 5400, service: 600, tax: 18 },
+    { key: 'hw-bracket', sku: 'AF-HW-BRK-01', productKey: 'hardware', vendorKey: 'rods', name: 'Curtain Hardware & Brackets Set', unit: 'set', cost: 260, sell: 520, service: 50, tax: 18 },
+    { key: 'svc-install', sku: 'AF-SVC-INS-01', productKey: 'install', vendorKey: 'track', name: 'Standard Professional Installation', unit: 'piece', cost: 300, sell: 650, service: 0, tax: 18 },
+    { key: 'svc-measure', sku: 'AF-SVC-MSR-01', productKey: 'install', vendorKey: 'track', name: 'Doorstep Measurement Visit', unit: 'piece', cost: 150, sell: 350, service: 0, tax: 18 },
   ];
   const skuIds: Record<string, number> = {};
   const skuPrices: Record<string, SkuPrice> = {};
@@ -180,13 +197,12 @@ export async function seedCore(
     }
   }
 
-  // ---- Branches ----
+  // ---- Branches (Aradhana Furnishing Locations) ----
   const branchSeeds = [
-    { key: 'del', name: 'Delhi NCR', code: 'DEL', city: 'New Delhi' },
-    { key: 'blr', name: 'Bengaluru', code: 'BLR', city: 'Bengaluru' },
-    { key: 'hyd', name: 'Hyderabad', code: 'HYD', city: 'Hyderabad' },
-    { key: 'koc', name: 'Kochi', code: 'KOC', city: 'Kochi' },
-    { key: 'amd', name: 'Ahmedabad', code: 'AMD', city: 'Ahmedabad' },
+    { key: 'gzb', name: 'Ghaziabad (C-19 RDC Raj Nagar)', code: 'GZB', city: 'Ghaziabad' },
+    { key: 'mrt', name: 'Meerut (A-182 Vidya Laxmi Complex, Abulane)', code: 'MRT', city: 'Meerut' },
+    { key: 'ddn', name: 'Dehradun (33/30 Govind Nagar, Race Course)', code: 'DDN', city: 'Dehradun' },
+    { key: 'del', name: 'Delhi NCR Corporate HQ', code: 'DEL', city: 'New Delhi' },
   ];
   const branchKeyToId: Record<string, number> = {};
   const branchIds: number[] = [];
@@ -204,23 +220,24 @@ export async function seedCore(
     await prisma.user.update({ where: { id: users[userKeys[i]] }, data: { branchId: branchIds[i % branchIds.length] } });
   }
   const cityBranchKey: Record<string, string> = {
-    'New Delhi': 'del', Gurugram: 'del', Kolkata: 'del',
-    Bengaluru: 'blr', Pune: 'blr',
-    Hyderabad: 'hyd', Kochi: 'koc', Ahmedabad: 'amd',
+    'New Delhi': 'del', Gurugram: 'del', Ghaziabad: 'gzb',
+    Meerut: 'mrt', Dehradun: 'ddn', Noida: 'gzb',
+    Kolkata: 'del', Bengaluru: 'del', Pune: 'del',
+    Hyderabad: 'del', Kochi: 'del', Ahmedabad: 'del',
   };
 
   // ---- Customers + Sites ----
   const customerSeeds = [
+    { name: 'Priya Mehta', phone: '9634666617', email: 'priya.mehta@gmail.com', address: 'Vidya Laxmi Complex, Abulane, Meerut', city: 'Meerut', pincode: '250001', assigned: 'sales', notes: 'In love with curtains, requested doorstep measurement for dining room' },
+    { name: 'Rohit Verma', phone: '01214519302', email: 'rohit.verma@gmail.com', address: 'C-19 RDC Raj Nagar, Ghaziabad', city: 'Ghaziabad', pincode: '201002', assigned: 'orderManager', notes: 'Revamped bedroom with premium wallpaper and bedsheets' },
+    { name: 'Sneha Kapoor', phone: '7303700284', email: 'sneha.kapoor@gmail.com', address: 'Race Course, Dehradun / Noida', city: 'Dehradun', pincode: '248001', assigned: 'sales', notes: 'Venetian blinds and hotel quality bath linens' },
     { name: 'Aarav Mehta', phone: '9876501001', email: 'aarav.mehta@gmail.com', address: 'A-14 Green Park, New Delhi', city: 'New Delhi', pincode: '110016', assigned: 'sales', notes: 'Prefers blackout in bedrooms' },
     { name: 'Sneha Iyer', phone: '9876501002', email: 'sneha.iyer@yahoo.com', address: '22 Indiranagar 100ft Road, Bengaluru', city: 'Bengaluru', pincode: '560038', assigned: 'sales', notes: 'Interested in motorized tracks' },
-    { name: 'Rohan Gupta', phone: '9876501003', email: 'rohan.gupta@outlook.com', address: 'B-7 Vasant Kunj, New Delhi', city: 'New Delhi', pincode: '110070', assigned: 'orderManager', notes: 'Big villa project' },
-    { name: 'Priya Nair', phone: '9876501004', email: 'priya.nair@gmail.com', address: '5 Marine Drive, Kochi', city: 'Kochi', pincode: '682031', assigned: 'sales' },
+    { name: 'Rohan Gupta', phone: '9876501003', email: 'rohan.gupta@outlook.com', address: 'B-7 Vasant Kunj, New Delhi', city: 'New Delhi', pincode: '110070', assigned: 'orderManager', notes: 'Big villa project in Ghaziabad' },
     { name: 'Kabir Singh', phone: '9876501005', email: 'kabir.singh@gmail.com', address: '301 Sector 21, Gurugram', city: 'Gurugram', pincode: '122016', assigned: 'sales', notes: 'Referral from Aarav Mehta' },
     { name: 'Diya Patel', phone: '9876501006', email: 'diya.patel@gmail.com', address: '9 CG Road, Ahmedabad', city: 'Ahmedabad', pincode: '380009', assigned: 'measurement' },
     { name: 'Arjun Reddy', phone: '9876501007', email: 'arjun.reddy@gmail.com', address: '44 Jubilee Hills, Hyderabad', city: 'Hyderabad', pincode: '500033', assigned: 'orderManager', notes: 'Corporate office project' },
     { name: 'Meera Joshi', phone: '9876501008', email: 'meera.joshi@gmail.com', address: '12 Aundh, Pune', city: 'Pune', pincode: '411007', assigned: 'sales' },
-    { name: 'Vivaan Chopra', phone: '9876501009', email: 'vivaan.chopra@gmail.com', address: '88 Salt Lake Sector 5, Kolkata', city: 'Kolkata', pincode: '700091', assigned: 'sales' },
-    { name: 'Ananya Desai', phone: '9876501010', email: 'ananya.desai@gmail.com', address: '6 Banjara Hills, Hyderabad', city: 'Hyderabad', pincode: '500034', assigned: 'sales' },
   ];
   const customerIds: number[] = [];
   const customerBranch: number[] = [];

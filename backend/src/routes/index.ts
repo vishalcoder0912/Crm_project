@@ -29,11 +29,13 @@ import communicationsRouter from './communications.routes';
 import notificationsRouter from './notifications.routes';
 import auditRouter from './audit.routes';
 import dashboardRouter from './dashboard.routes';
+import reportsRouter from './reports.routes';
 import branchesRouter from './branches.routes';
 import followUpsRouter from './follow-ups.routes';
 import fieldEmployeesRouter from './fieldEmployees.routes';
 import vehiclesRouter from './vehicles.routes';
 import searchRouter from './search.routes';
+import calendarRouter from './calendar.routes';
 
 const router = Router();
 
@@ -104,6 +106,7 @@ const API = {
     'POST /notifications/read-all': 'Mark all read',
     'GET /audit': 'Audit log (admin)',
     'GET /dashboard/summary': 'Business KPIs, funnel, follow-ups, charts',
+    'GET /reports/…': 'Reports API (summary, revenue, funnel, enquiries, quotations, customers, orders, branches, team, stock)',
     'GET/POST/PATCH /follow-ups + POST /follow-ups/:id/complete': 'Sales follow-up tasks',
     'GET /follow-ups/stats': 'Follow-up bucket counts',
     'CRUD /branches': 'Branch master',
@@ -158,10 +161,12 @@ router.use('/communications', communicationsRouter);
 router.use('/notifications', notificationsRouter);
 router.use('/audit', auditRouter);
 router.use('/dashboard', dashboardRouter);
+router.use('/reports', reportsRouter);
 router.use('/branches', branchesRouter);
 router.use('/follow-ups', followUpsRouter);
 router.use('/field-employees', fieldEmployeesRouter);
 router.use('/vehicles', vehiclesRouter);
 router.use('/search', searchRouter);
+router.use('/calendar', calendarRouter);
 
 export default router;

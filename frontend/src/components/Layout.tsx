@@ -15,6 +15,7 @@ const NAV: NavGroup[] = [
     group: 'Overview',
     items: [
       { to: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
+      { to: '/calendar', label: 'Calendar', icon: 'calendar' },
       { to: '/reports', label: 'Reports', icon: 'chart' },
       { to: '/follow-ups', label: 'Follow-ups', icon: 'bell' },
     ],
@@ -23,6 +24,7 @@ const NAV: NavGroup[] = [
     group: 'CRM',
     items: [
       { to: '/customers', label: 'Customers', icon: 'customers' },
+      { to: '/measurements', label: 'Measurements', icon: 'grid' },
       { to: '/enquiries', label: 'Enquiries', icon: 'enquiries' },
       { to: '/communications', label: 'Communications', icon: 'send' },
     ],
@@ -494,7 +496,7 @@ export default function Layout() {
               className="flex h-9 w-full max-w-lg items-center gap-2.5 rounded-lg border border-line bg-canvas px-3 text-left text-[13px] text-muted transition hover:border-brand-300 hover:bg-white"
             >
               <Icon name="search" size={16} />
-              <span className="flex-1 truncate">Search customers, enquiries, orders…</span>
+              <span className="flex-1 truncate">Search customers by name or phone, orders, quotations…</span>
               <kbd className="rounded border border-line bg-white px-1.5 py-0.5 text-[10px] font-semibold text-muted">Ctrl K</kbd>
             </button>
           </div>

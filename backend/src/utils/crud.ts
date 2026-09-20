@@ -90,7 +90,13 @@ export function createCrudRouter(options: CrudOptions): Router {
             }
             where[field] = num;
           } else {
-            where[field] = raw;
+            const str = Array.isArray(raw) ? String(raw[0]) : String(raw);
+            if (str === '') continue;
+            if (str === 'true' || str === 'false') {
+              where[field] = str === 'true';
+            } else {
+              where[field] = raw;
+            }
           }
         }
       }
@@ -176,6 +182,13 @@ export function createCrudRouter(options: CrudOptions): Router {
         await options.beforeUpdate(req, id);
       }
 
+      const existing = options.softDelete
+        ? await delegate.findFirst({ where: { id, deletedAt: null } })
+        : await delegate.findUnique({ where: { id } });
+      if (!existing) {
+        throw new NotFoundError(options.entity, id);
+      }
+
       let data: Record<string, unknown> = req.body ?? {};
       if (options.updateBody) {
         data = await options.updateBody(req, data);
@@ -199,6 +212,13 @@ export function createCrudRouter(options: CrudOptions): Router {
       const id = parseId(req.params.id);
       if (options.beforeRemove) {
         await options.beforeRemove(req, id);
+      }
+
+      const existing = options.softDelete
+        ? await delegate.findFirst({ where: { id, deletedAt: null } })
+        : await delegate.findUnique({ where: { id } });
+      if (!existing) {
+        throw new NotFoundError(options.entity, id);
       }
 
       let record;

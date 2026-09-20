@@ -14,7 +14,7 @@ export default function Reports() {
   const load = useCallback(() => {
     setLoading(true);
     data
-      .summary('/dashboard/summary', branchId ? { branchId } : undefined)
+      .summary('/reports/summary', branchId ? { branchId } : undefined)
       .then(setS)
       .catch(() => setS(null))
       .finally(() => setLoading(false));

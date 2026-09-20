@@ -265,6 +265,68 @@ const demoFollowUps = [
   { id: 5, businessId: 'FLW-0005', customerId: 5, customer: { id: 5, name: 'Agarwal Villa', phone: '+91 97690 33445' }, purpose: 'Measurement confirmation', channel: 'CALL', dueAt: daysAgo(4) + 'T11:00:00Z', priority: 'MEDIUM', status: 'COMPLETED', assignedTo: { firstName: 'Rahul', lastName: 'Desai' }, notes: 'Measurement completed on terrace', createdAt: daysAgo(5) },
 ];
 
+const demoMeasurements = [
+  {
+    id: 1,
+    businessId: 'MSR-0001',
+    customerId: 1,
+    customer: { id: 1, name: 'Kapoor Residence', phone: '+91 98200 11223', address: 'Andheri West, Mumbai' },
+    measurementDate: daysAgo(20),
+    status: 'APPROVED',
+    measuredBy: { firstName: 'Rahul', lastName: 'Desai' },
+    items: [
+      { id: 1, room: 'Living Room', windowArea: 'Window A', width: 96, height: 90, quantity: 2, unit: 'inches', measurementType: 'Rod-to-rod' },
+      { id: 2, room: 'Living Room', windowArea: 'Window B', width: 60, height: 90, quantity: 1, unit: 'inches', measurementType: 'Rod-to-rod' },
+    ],
+  },
+  {
+    id: 2,
+    businessId: 'MSR-0002',
+    customerId: 2,
+    customer: { id: 2, name: 'Blue Lotus Interiors', phone: '+91 98111 44556', address: 'Koregaon Park, Pune' },
+    measurementDate: daysAgo(30),
+    status: 'MEASURED',
+    measuredBy: { firstName: 'Rahul', lastName: 'Desai' },
+    items: [
+      { id: 3, room: 'Office', windowArea: 'Front Façade', width: 6, height: 8, quantity: 4, unit: 'feet', measurementType: 'Full wall / floor' },
+      { id: 4, room: 'Office', windowArea: 'Cubicles', width: 4, height: 5, quantity: 6, unit: 'feet', measurementType: 'Inside frame' },
+    ],
+  },
+  {
+    id: 3,
+    businessId: 'MSR-0003',
+    customerId: 3,
+    customer: { id: 3, name: 'Mehta Family', phone: '+91 90040 77889', address: '' },
+    measurementDate: daysAgo(12),
+    status: 'PENDING_APPROVAL',
+    measuredBy: { firstName: 'Priya', lastName: 'Nair' },
+    items: [
+      { id: 5, room: 'Bedroom', windowArea: 'Master', width: 108, height: 78, quantity: 1, unit: 'inches', measurementType: 'Rod-to-rod' },
+    ],
+  },
+] as any[];
+
+const demoGaps = {
+  counts: {
+    missingMeasurement: 2,
+    pendingMeasurement: 1,
+    incompleteDetails: 1,
+    total: 4,
+  },
+  gaps: {
+    missingMeasurement: [
+      { id: 5, type: 'CUSTOMER', businessId: 'CUS-0005', customerId: 5, name: 'Agarwal Villa', phone: '+91 97690 33445', address: 'Navi Mumbai', createdAt: daysAgo(14), label: 'Customer with full details, no measurement yet', actionLabel: 'Add measurement' },
+      { id: 6, type: 'CUSTOMER', businessId: 'CUS-0006', customerId: 6, name: 'Skyline Offices', phone: '+91 99875 66770', address: 'BKC, Mumbai', createdAt: daysAgo(8), label: 'Customer with full details, no measurement yet', actionLabel: 'Add measurement' },
+    ],
+    pendingMeasurement: [
+      { id: 4, type: 'ENQUIRY', businessId: 'ENQ-0107', customerId: 4, name: 'The Grand Hotel', phone: '+91 98339 22001', address: 'Goa', createdAt: daysAgo(20), label: 'Enquiry in "MEASUREMENT_PENDING" — measurement promised but not recorded', actionLabel: 'Record measurement' },
+    ],
+    incompleteDetails: [
+      { id: 3, type: 'MEASUREMENT', businessId: 'MSR-0003', name: 'Mehta Family', phone: null, address: '', missing: ['phone', 'address'], createdAt: daysAgo(12), label: 'Measurement recorded but customer phone & address missing', actionLabel: 'Complete details' },
+    ],
+  },
+};
+
 const stores: Record<string, any[]> = {
   '/customers': demoCustomers,
   '/enquiries': demoEnquiries,
@@ -291,6 +353,7 @@ const stores: Record<string, any[]> = {
   '/communications': demoCommunications,
   '/audit': demoAudit,
   '/follow-ups': demoFollowUps,
+  '/measurements': demoMeasurements,
 };
 
 export function demoSearch(q: string) {
@@ -374,6 +437,41 @@ export function demoGet(path: string): any {
   }
   if (clean === '/follow-ups/stats') {
     return { overdue: 1, today: 1, upcoming: 2, completedThisWeek: 1 };
+  }
+
+  if (clean === '/measurements/gaps') {
+    return demoGaps;
+  }
+  if (clean === '/calendar/events') {
+    const query = Object.fromEntries(new URLSearchParams(path.split('?')[1] ?? ''));
+    const type = query.type ?? 'all';
+    const events = [
+      ...demoFollowUps.map((f) => ({
+        id: `flw-${f.id}`, type: 'followup' as const, businessId: f.businessId,
+        title: f.purpose, subtitle: `${f.customer?.name ?? ''} · ${f.channel}`,
+        date: f.dueAt, status: f.status, href: `/follow-ups`,
+      })),
+      ...demoInstallations.map((i) => ({
+        id: `ins-${i.id}`, type: 'installation' as const, businessId: i.businessId,
+        title: `Installation ${i.businessId}`, subtitle: `${i.customerName ?? ''} · ${i.siteCity ?? ''}`,
+        date: i.scheduledDate ? i.scheduledDate + 'T09:00:00Z' : new Date().toISOString(), status: i.status, href: `/installations`,
+      })),
+      ...demoPayments.map((p) => ({
+        id: `pay-${p.id}`, type: 'payment' as const, businessId: p.paymentNo,
+        title: `${p.type} payment`, subtitle: `${p.customerName ?? ''} · ${p.method}`, date: (p.paidAt ?? '') + 'T12:00:00Z', status: p.status, href: `/payments`,
+      })),
+      ...demoEnquiries.map((e) => ({
+        id: `enq-${e.id}`, type: 'enquiry' as const, businessId: e.businessId,
+        title: `Enquiry — ${e.productType ?? ''}`, subtitle: `${e.customerName ?? ''} · ₹${e.budget ?? 0}`,
+        date: e.createdAt + 'T10:00:00Z', status: e.status, href: `/enquiries`,
+      })),
+      ...demoMeasurements.map((m) => ({
+        id: `msr-${m.id}`, type: 'measurement' as const, businessId: m.businessId,
+        title: `Measurement ${m.businessId}`, subtitle: m.customer?.name ?? '',
+        date: m.measurementDate + 'T11:00:00Z', status: m.status, href: `/measurements`,
+      })),
+    ].filter((e) => type === 'all' || e.type === type);
+    return { from: query.from ?? null, to: query.to ?? null, query: type, total: events.length, events };
   }
 
   const prefix = '/' + clean.split('/')[1];

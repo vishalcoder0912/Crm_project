@@ -109,7 +109,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
             ref={inputRef}
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search customers, orders, quotations, follow-ups…"
+            placeholder="Search customers by name or phone number, orders, quotations…"
             className="w-full bg-transparent py-4 text-sm text-ink placeholder:text-muted focus:outline-none"
           />
           <kbd className="hidden rounded border border-line bg-canvas px-1.5 py-0.5 text-[10px] font-semibold text-muted sm:block">ESC</kbd>

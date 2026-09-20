@@ -102,6 +102,7 @@ export default function Customers() {
               <ActionMenu
                 items={[
                   { label: 'View profile', icon: <Icon name="customers" size={14} />, onClick: () => navigate(`/customers/${r.id}`) },
+                  { label: 'Take measurement', icon: <Icon name="grid" size={14} />, onClick: () => navigate(`/measurements`) },
                   { label: 'New enquiry', icon: <Icon name="enquiries" size={14} />, onClick: () => navigate(`/enquiries`) },
                   { label: 'Follow-up', icon: <Icon name="bell" size={14} />, onClick: () => navigate(`/follow-ups`) },
                   { label: 'Edit', icon: <Icon name="edit" size={14} />, onClick: () => openEdit(r) },
@@ -114,7 +115,7 @@ export default function Customers() {
         rows={rows}
         loading={loading}
         searchKeys={['name', 'phone', 'email', 'address', 'businessId']}
-        searchPlaceholder="Search customers…"
+        searchPlaceholder="Search customers by name or mobile number…"
         emptyTitle="No customers yet"
         onRowClick={(r) => navigate(`/customers/${r.id}`)}
       />

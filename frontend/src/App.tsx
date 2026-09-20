@@ -8,6 +8,8 @@ import FollowUps from './pages/FollowUps';
 import CustomerDetail from './pages/CustomerDetail';
 import Branches from './pages/Branches';
 import Customers from './pages/Customers';
+import Measurements from './pages/Measurements';
+import Calendar from './pages/Calendar';
 import Enquiries from './pages/Enquiries';
 import Communications from './pages/Communications';
 import Quotations from './pages/Quotations';
@@ -59,6 +61,8 @@ export default function App() {
         <Route path="/follow-ups" element={<FollowUps />} />
         <Route path="/customers" element={<Customers />} />
         <Route path="/customers/:id" element={<CustomerDetail />} />
+        <Route path="/measurements" element={<Measurements />} />
+        <Route path="/calendar" element={<Calendar />} />
         <Route path="/branches" element={<Branches />} />
         <Route path="/enquiries" element={<Enquiries />} />
         <Route path="/communications" element={<Communications />} />

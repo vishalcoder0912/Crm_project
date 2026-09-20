@@ -57,43 +57,122 @@ router.use(
       remove: 'enquiries.delete',
     },
     createBody: async (req) => {
-      const body = req.body as any;
-      const customerId = body.customerId === undefined || body.customerId === null || body.customerId === '' ? NaN : Number(body.customerId);
-      if (Number.isNaN(customerId)) {
+      const body = (req.body ?? {}) as Record<string, any>;
+
+      const toIdOrThrow = (v: unknown, field: string): number | undefined => {
+        if (v === undefined || v === null || v === '') return undefined;
+        const n = Number(v);
+        if (!Number.isInteger(n)) {
+          throw new ValidationError(`${field} must be a valid number`);
+        }
+        return n;
+      };
+
+      const customerId = toIdOrThrow(body.customerId, 'customerId');
+      if (customerId === undefined) {
         throw new ValidationError('customerId is required and must be a number');
       }
       const customer = await prisma.customer.findUnique({ where: { id: customerId } });
       if (!customer) {
         throw new ValidationError('customerId does not exist');
       }
+
       const items = Array.isArray(body.items) ? body.items : [];
       for (const item of items) {
-        if (!item.room || !item.requirement) {
+        if (
+          !(typeof item?.room === 'string' && item.room.trim()) ||
+          !(typeof item?.requirement === 'string' && item.requirement.trim())
+        ) {
           throw new ValidationError('Each item requires room and requirement');
         }
       }
-      const { items: _items, ...rest } = body;
-      const toNumberOrUndefined = (v: any): number | undefined =>
-        v === undefined || v === null || v === '' ? undefined : Number(v);
+
+      const status = body.status ?? ENQUIRY_STATUS.NEW;
+      if (!Object.values(ENQUIRY_STATUS).includes(status)) {
+        throw new ValidationError(`Invalid enquiry status: ${status}`);
+      }
+      if (status === ENQUIRY_STATUS.LOST) {
+        if (!body.lostReason || !LOST_REASONS.includes(body.lostReason)) {
+          throw new ValidationError(`lostReason must be one of: ${LOST_REASONS.join(', ')}`);
+        }
+      }
+
+      const { items: _items, customerId: _c, status: _s, ...rest } = body;
       return {
         ...rest,
         customerId,
-        siteId: toNumberOrUndefined(rest.siteId),
-        assignedToId: toNumberOrUndefined(rest.assignedToId),
+        siteId: toIdOrThrow(rest.siteId, 'siteId'),
+        assignedToId: toIdOrThrow(rest.assignedToId, 'assignedToId'),
+        status,
         createdById: req.user!.userId,
         ...(items.length > 0 ? { items: { create: items } } : {}),
       };
     },
-    updateBody: async (req, body) => {
-      const { items, ...rest } = body;
-      const data: Record<string, unknown> = { ...rest };
-      const toNumberOrUndefined = (v: any): number | undefined =>
-        v === undefined || v === null || v === '' ? undefined : Number(v);
-      if (rest.customerId !== undefined) data.customerId = toNumberOrUndefined(rest.customerId);
-      if (rest.siteId !== undefined) data.siteId = toNumberOrUndefined(rest.siteId);
-      if (rest.assignedToId !== undefined) data.assignedToId = toNumberOrUndefined(rest.assignedToId);
-      if (Array.isArray(items) && items.length > 0) {
-        data.items = { create: items };
+    updateBody: async (_req, body) => {
+      const writable = [
+        'customerId',
+        'siteId',
+        'assignedToId',
+        'source',
+        'notes',
+        'advanceAmount',
+        'enquiryDate',
+        'status',
+        'lostReason',
+        'lostReasonDetail',
+        'items',
+      ];
+      const immutable = ['id', 'businessId', 'createdById', 'createdAt', 'updatedAt', 'deletedAt'];
+
+      const data: Record<string, unknown> = {};
+      for (const key of Object.keys(body ?? {})) {
+        if (immutable.includes(key)) continue;
+        if (!writable.includes(key)) {
+          throw new ValidationError(`Unknown field for update: ${key}`);
+        }
+        const val = (body as Record<string, any>)[key];
+
+        if (key === 'customerId' || key === 'siteId' || key === 'assignedToId') {
+          if (val === undefined || val === null || val === '') {
+            data[key] = null;
+            continue;
+          }
+          const n = Number(val);
+          if (!Number.isInteger(n)) {
+            throw new ValidationError(`${key} must be a valid number`);
+          }
+          data[key] = n;
+        } else if (key === 'status') {
+          if (!Object.values(ENQUIRY_STATUS).includes(val)) {
+            throw new ValidationError(`Invalid enquiry status: ${val}`);
+          }
+          data[key] = val;
+        } else if (key === 'advanceAmount') {
+          data[key] = val === undefined || val === null || val === '' ? null : Number(val);
+        } else if (key === 'enquiryDate') {
+          if (typeof val !== 'string' && !(val instanceof Date)) {
+            throw new ValidationError('enquiryDate must be a valid date');
+          }
+          data[key] = new Date(val);
+        } else if (key === 'items') {
+          if (Array.isArray(val) && val.length > 0) {
+            for (const item of val) {
+              if (
+                !(typeof item?.room === 'string' && item.room.trim()) ||
+                !(typeof item?.requirement === 'string' && item.requirement.trim())
+              ) {
+                throw new ValidationError('Each item requires room and requirement');
+              }
+            }
+            data.items = { create: val };
+          }
+        } else {
+          data[key] = val;
+        }
+      }
+
+      if (Object.keys(data).length === 0) {
+        throw new ValidationError('Nothing to update');
       }
       return data;
     },
